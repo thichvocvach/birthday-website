@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Happy Birthday Animation</title>
 
-<!-- Font Script (Pacifico) -->
+<!-- Font Script -->
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
 
 <style>
@@ -18,45 +18,20 @@
     display: block;
   }
 
-  /* ===== Màn hình xoay ngang ===== */
+  /* ===== Yêu cầu xoay ngang ===== */
   #rotate-screen {
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
     background: black;
-    display: flex; /* luôn hiển thị mặc định */
+    color: white;
+    font-size: 20px;
+    font-family: sans-serif;
+    display: flex;
     justify-content: center;
     align-items: center;
+    text-align: center;
     z-index: 10000;
-    flex-direction: column;
-  }
-
-  /* Icon điện thoại */
-  .phone-icon {
-    width: 80px;
-    height: 120px;
-    border: 4px solid white;
-    border-radius: 15px;
-    position: relative;
-    animation: rotatePhone 2s infinite;
-  }
-
-  .phone-icon::before {
-    content: "";
-    position: absolute;
-    top: 5px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 25px;
-    height: 5px;
-    background: white;
-    border-radius: 3px;
-  }
-
-  @keyframes rotatePhone {
-    0% { transform: rotate(0deg); }
-    50% { transform: rotate(90deg); }
-    100% { transform: rotate(0deg); }
   }
 
   /* ===== Màn hình loading ===== */
@@ -65,31 +40,29 @@
     top: 0; left: 0;
     width: 100%; height: 100%;
     background: black;
-    display: flex;
+    display: none;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     z-index: 9999;
-    display: none; /* ẩn mặc định */
   }
 
   .spinner {
     border: 5px solid transparent;
     border-top: 5px solid white;
     border-radius: 50%;
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
     animation: spin 1s linear infinite;
   }
 
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    to { transform: rotate(360deg); }
   }
 
   .loading-text {
-    margin-top: 20px;
-    font-size: 28px;
+    margin-top: 15px;
+    font-size: 22px;
     font-family: 'Pacifico', cursive;
     color: white;
   }
@@ -97,12 +70,10 @@
 </head>
 <body>
 
-<!-- Yêu cầu xoay ngang -->
-<div id="rotate-screen">
-  <div class="phone-icon"></div>
-</div>
+<!-- Xoay ngang -->
+<div id="rotate-screen">Hãy xoay ngang màn hình</div>
 
-<!-- Màn hình loading -->
+<!-- Loading -->
 <div id="loading-screen">
   <div class="spinner"></div>
   <div class="loading-text">Đang tải...</div>
@@ -113,17 +84,29 @@
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
 
-// ====== Mưa chữ HAPPYBIRTHDAY ======
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+
+// ===== Mưa chữ HAPPYBIRTHDAY =====
 const letters = "HAPPYBIRTHDAY".split("");
-const fontSize = 25;
-const columns = Math.floor(canvas.width / fontSize);
-const drops = Array(columns).fill(0);
+let fontSize = 22;
+let columns, drops;
+
+function resetRain() {
+  fontSize = Math.max(18, Math.floor(canvas.width / 30));
+  columns = Math.floor(canvas.width / fontSize);
+  drops = Array(columns).fill(0);
+}
+resetRain();
+window.addEventListener("resize", resetRain);
 
 function drawRain() {
-  ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+  ctx.fillStyle = "rgba(0,0,0,0.08)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.font = fontSize + "px monospace";
@@ -138,7 +121,7 @@ function drawRain() {
   }
 }
 
-// ====== Particle Countdown (hiệu ứng chấm lấp lánh) ======
+// ===== Particle Countdown =====
 class Particle {
   constructor(x, y, tx, ty) {
     this.x = x;
@@ -147,21 +130,21 @@ class Particle {
     this.ty = ty;
     this.size = 2;
     this.color = "hotpink";
-    this.vx = (Math.random() - 0.5) * 5;
-    this.vy = (Math.random() - 0.5) * 5;
+    this.vx = (Math.random() - 0.5) * 4;
+    this.vy = (Math.random() - 0.5) * 4;
     this.alpha = Math.random();
     this.scale = 0;
-    this.twinkleSpeed = 0.05 + Math.random() * 0.05;
+    this.twinkleSpeed = 0.04 + Math.random() * 0.04;
   }
   update(forming) {
     if (forming) {
-      this.x += (this.tx - this.x) * 0.15;
-      this.y += (this.ty - this.y) * 0.15;
+      this.x += (this.tx - this.x) * 0.1;
+      this.y += (this.ty - this.y) * 0.1;
       this.scale += (1 - this.scale) * 0.05;
     } else {
       this.x += this.vx;
       this.y += this.vy;
-      this.scale *= 0.95;
+      this.scale *= 0.96;
     }
     this.alpha = 0.5 + 0.5 * Math.sin(Date.now() * this.twinkleSpeed);
   }
@@ -181,15 +164,18 @@ function createParticlesForText(text) {
   tempCanvas.width = canvas.width;
   tempCanvas.height = canvas.height;
   tempCtx.fillStyle = "white";
-  tempCtx.font = "bold 200px Arial";
+
+  let dynamicFontSize = Math.min(canvas.width, canvas.height) / 5;
+  tempCtx.font = "bold " + dynamicFontSize + "px Arial";
   tempCtx.textAlign = "center";
   tempCtx.textBaseline = "middle";
   tempCtx.fillText(text, canvas.width / 2, canvas.height / 2);
 
   let imageData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
   let particles = [];
-  for (let y = 0; y < canvas.height; y += 6) {
-    for (let x = 0; x < canvas.width; x += 6) {
+  let gap = Math.max(4, Math.floor(dynamicFontSize / 30));
+  for (let y = 0; y < canvas.height; y += gap) {
+    for (let x = 0; x < canvas.width; x += gap) {
       let index = (y * canvas.width + x) * 4;
       if (imageData.data[index + 3] > 128) {
         let p = new Particle(Math.random() * canvas.width, Math.random() * canvas.height, x, y);
@@ -209,13 +195,11 @@ let countdownStarted = false;
 
 function animate() {
   drawRain();
-
   if (countdownStarted) {
     particles.forEach(p => {
       p.update(forming);
       p.draw();
     });
-
     if (Date.now() - switchTime > 2000) {
       if (forming) {
         forming = false;
@@ -233,7 +217,7 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
-// ====== Kiểm tra xoay ngang ======
+// ===== Kiểm tra xoay ngang =====
 function checkOrientation() {
   if (window.innerWidth > window.innerHeight) {
     document.getElementById("rotate-screen").style.display = "none";
@@ -245,10 +229,12 @@ function checkOrientation() {
         particles = createParticlesForText(messages[msgIndex]);
         countdownStarted = true;
         switchTime = Date.now();
-      }, 2000);
-    }, 4000);
+      }, 1500);
+    }, 3000);
   } else {
     document.getElementById("rotate-screen").style.display = "flex";
+    document.getElementById("loading-screen").style.display = "none";
+    countdownStarted = false;
   }
 }
 window.addEventListener("resize", checkOrientation);
