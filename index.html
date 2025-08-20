@@ -24,13 +24,39 @@
     top: 0; left: 0;
     width: 100%; height: 100%;
     background: black;
-    color: white;
-    font-size: 22px;
-    display: flex;
+    display: flex; /* luôn hiển thị mặc định */
     justify-content: center;
     align-items: center;
-    text-align: center;
     z-index: 10000;
+    flex-direction: column;
+  }
+
+  /* Icon điện thoại */
+  .phone-icon {
+    width: 80px;
+    height: 120px;
+    border: 4px solid white;
+    border-radius: 15px;
+    position: relative;
+    animation: rotatePhone 2s infinite;
+  }
+
+  .phone-icon::before {
+    content: "";
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 25px;
+    height: 5px;
+    background: white;
+    border-radius: 3px;
+  }
+
+  @keyframes rotatePhone {
+    0% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+    100% { transform: rotate(0deg); }
   }
 
   /* ===== Màn hình loading ===== */
@@ -49,7 +75,7 @@
 
   .spinner {
     border: 5px solid transparent;
-    border-top: 5px solid white; /* vòng xoay trắng */
+    border-top: 5px solid white;
     border-radius: 50%;
     width: 50px;
     height: 50px;
@@ -72,7 +98,9 @@
 <body>
 
 <!-- Yêu cầu xoay ngang -->
-<div id="rotate-screen">📱 Vui lòng xoay ngang màn hình để tiếp tục 🎉</div>
+<div id="rotate-screen">
+  <div class="phone-icon"></div>
+</div>
 
 <!-- Màn hình loading -->
 <div id="loading-screen">
@@ -211,15 +239,12 @@ function checkOrientation() {
     document.getElementById("rotate-screen").style.display = "none";
     document.getElementById("loading-screen").style.display = "flex";
 
-    // Sau 4s thì bỏ loading, rồi đợi 3s mới bắt đầu countdown
     setTimeout(() => {
       document.getElementById("loading-screen").style.display = "none";
-
-       // đợi thêm 2s mới tạo particles
-       setTimeout(() => {
-         particles = createParticlesForText(messages[msgIndex]);
-         countdownStarted = true;
-         switchTime = Date.now();
+      setTimeout(() => {
+        particles = createParticlesForText(messages[msgIndex]);
+        countdownStarted = true;
+        switchTime = Date.now();
       }, 2000);
     }, 4000);
   } else {
