@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Happy Birthday Animation</title>
+
+<!-- Font Script (Pacifico) -->
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+
+<style>
+  body {
+    margin: 0;
+    background: black;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+  }
+
+  /* ===== Màn hình xoay ngang ===== */
+  #rotate-screen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: black;
+    color: white;
+    font-size: 22px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    z-index: 10000;
+  }
+
+  /* ===== Màn hình loading ===== */
+  #loading-screen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: black;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    display: none; /* ẩn mặc định */
+  }
+
+  .spinner {
+    border: 5px solid transparent;
+    border-top: 5px solid white; /* vòng xoay trắng */
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .loading-text {
+    margin-top: 20px;
+    font-size: 28px;
+    font-family: 'Pacifico', cursive;
+    color: white;
+  }
+</style>
+</head>
+<body>
+
+<!-- Yêu cầu xoay ngang -->
+<div id="rotate-screen">📱 Vui lòng xoay ngang màn hình để tiếp tục 🎉</div>
+
+<!-- Màn hình loading -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <div class="loading-text">Đang tải...</div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// ====== Mưa chữ HAPPYBIRTHDAY ======
+const letters = "HAPPYBIRTHDAY".split("");
+const fontSize = 25;
+const columns = Math.floor(canvas.width / fontSize);
+const drops = Array(columns).fill(0);
+
+function drawRain() {
+  ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.font = fontSize + "px monospace";
+  for (let i = 0; i < drops.length; i++) {
+    ctx.fillStyle = i % 2 === 0 ? "pink" : "lightpink";
+    const text = letters[Math.floor(Math.random() * letters.length)];
+    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+      drops[i] = 0;
+    }
+    drops[i]++;
+  }
+}
+
+// ====== Particle Countdown (hiệu ứng chấm lấp lánh) ======
+class Particle {
+  constructor(x, y, tx, ty) {
+    this.x = x;
+    this.y = y;
+    this.tx = tx;
+    this.ty = ty;
+    this.size = 2;
+    this.color = "hotpink";
+    this.vx = (Math.random() - 0.5) * 5;
+    this.vy = (Math.random() - 0.5) * 5;
+    this.alpha = Math.random();
+    this.scale = 0;
+    this.twinkleSpeed = 0.05 + Math.random() * 0.05;
+  }
+  update(forming) {
+    if (forming) {
+      this.x += (this.tx - this.x) * 0.15;
+      this.y += (this.ty - this.y) * 0.15;
+      this.scale += (1 - this.scale) * 0.05;
+    } else {
+      this.x += this.vx;
+      this.y += this.vy;
+      this.scale *= 0.95;
+    }
+    this.alpha = 0.5 + 0.5 * Math.sin(Date.now() * this.twinkleSpeed);
+  }
+  draw() {
+    ctx.globalAlpha = this.alpha;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * this.scale, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function createParticlesForText(text) {
+  let tempCanvas = document.createElement("canvas");
+  let tempCtx = tempCanvas.getContext("2d");
+  tempCanvas.width = canvas.width;
+  tempCanvas.height = canvas.height;
+  tempCtx.fillStyle = "white";
+  tempCtx.font = "bold 200px Arial";
+  tempCtx.textAlign = "center";
+  tempCtx.textBaseline = "middle";
+  tempCtx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+  let imageData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
+  let particles = [];
+  for (let y = 0; y < canvas.height; y += 6) {
+    for (let x = 0; x < canvas.width; x += 6) {
+      let index = (y * canvas.width + x) * 4;
+      if (imageData.data[index + 3] > 128) {
+        let p = new Particle(Math.random() * canvas.width, Math.random() * canvas.height, x, y);
+        particles.push(p);
+      }
+    }
+  }
+  return particles;
+}
+
+let messages = ["3", "2", "1", "HAPPY", "BIRTHDAY", "TO", "YOU"];
+let msgIndex = 0;
+let particles = [];
+let forming = true;
+let switchTime = Date.now();
+let countdownStarted = false;
+
+function animate() {
+  drawRain();
+
+  if (countdownStarted) {
+    particles.forEach(p => {
+      p.update(forming);
+      p.draw();
+    });
+
+    if (Date.now() - switchTime > 2000) {
+      if (forming) {
+        forming = false;
+        switchTime = Date.now();
+      } else {
+        msgIndex++;
+        if (msgIndex < messages.length) {
+          particles = createParticlesForText(messages[msgIndex]);
+          forming = true;
+          switchTime = Date.now();
+        }
+      }
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+// ====== Kiểm tra xoay ngang ======
+function checkOrientation() {
+  if (window.innerWidth > window.innerHeight) {
+    document.getElementById("rotate-screen").style.display = "none";
+    document.getElementById("loading-screen").style.display = "flex";
+
+    // Sau 4s thì bỏ loading, rồi đợi 3s mới bắt đầu countdown
+    setTimeout(() => {
+      document.getElementById("loading-screen").style.display = "none";
+
+       // đợi thêm 2s mới tạo particles
+       setTimeout(() => {
+         particles = createParticlesForText(messages[msgIndex]);
+         countdownStarted = true;
+         switchTime = Date.now();
+      }, 2000);
+    }, 4000);
+  } else {
+    document.getElementById("rotate-screen").style.display = "flex";
+  }
+}
+window.addEventListener("resize", checkOrientation);
+checkOrientation();
+
+animate();
+</script>
+
+</body>
+</html>
