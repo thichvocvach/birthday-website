@@ -1,152 +1,211 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Happy Birthday Animation</title>
 
-<!-- Font Script -->
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
 
 <style>
-  body {
-    margin: 0;
-    background: black;
-    overflow: hidden;
+  :root {
+    /* chống giật khi thanh URL mobile ẩn/hiện */
+    height: 100%;
   }
-  canvas {
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+    touch-action: manipulation;            /* giảm double-tap zoom */
+    overscroll-behavior: contain;
+  }
+  /* Canvas full màn hình */
+  #canvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
     display: block;
   }
 
-  /* ===== Yêu cầu xoay ngang ===== */
+  /* ===== Overlay xoay ngang (chỉ hiện khi dọc) ===== */
   #rotate-screen {
     position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: black;
-    color: white;
-    font-size: 20px;
-    font-family: sans-serif;
-    display: flex;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: none; /* ẩn mặc định, JS sẽ bật khi dọc */
     justify-content: center;
     align-items: center;
-    text-align: center;
+    flex-direction: column;
     z-index: 10000;
+    color: #fff;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    text-align: center;
+    gap: 16px;
+  }
+  /* icon điện thoại xoay */
+  .phone-icon {
+    width: 88px;
+    height: 130px;
+    border: 4px solid #fff;
+    border-radius: 18px;
+    position: relative;
+    animation: rotatePhone 1.6s infinite ease-in-out;
+  }
+  .phone-icon::before {
+    content: "";
+    position: absolute;
+    top: 6px; left: 50%;
+    transform: translateX(-50%);
+    width: 28px; height: 6px;
+    background: #fff; border-radius: 3px;
+  }
+  @keyframes rotatePhone {
+    0% { transform: rotate(0deg) }
+    50% { transform: rotate(90deg) }
+    100% { transform: rotate(0deg) }
   }
 
   /* ===== Màn hình loading ===== */
   #loading-screen {
     position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: black;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
     display: none;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+    place-items: center;
     z-index: 9999;
   }
-
+  .loading-wrap {
+    display: flex; flex-direction: column; align-items: center;
+  }
   .spinner {
     border: 5px solid transparent;
-    border-top: 5px solid white;
+    border-top: 5px solid #fff;
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
+    width: 42px; height: 42px;
     animation: spin 1s linear infinite;
   }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
+  @keyframes spin { to { transform: rotate(360deg) } }
   .loading-text {
-    margin-top: 15px;
+    margin-top: 14px;
     font-size: 22px;
     font-family: 'Pacifico', cursive;
-    color: white;
+    color: #fff;
   }
 </style>
 </head>
 <body>
 
-<!-- Xoay ngang -->
-<div id="rotate-screen">Hãy xoay ngang màn hình</div>
+<!-- Overlay xoay ngang (hiện khi dọc) -->
+<div id="rotate-screen" aria-hidden="true">
+  <div class="phone-icon"></div>
+  <div>Hãy xoay ngang màn hình</div>
+</div>
 
 <!-- Loading -->
-<div id="loading-screen">
-  <div class="spinner"></div>
-  <div class="loading-text">Đang tải...</div>
+<div id="loading-screen" aria-hidden="true">
+  <div class="loading-wrap">
+    <div class="spinner"></div>
+    <div class="loading-text">Đang tải...</div>
+  </div>
 </div>
 
 <canvas id="canvas"></canvas>
 
 <script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+/* ===== Ngăn pinch-zoom / double-tap zoom ===== */
+document.addEventListener('gesturestart', e => e.preventDefault(), {passive:false});
+document.addEventListener('gesturechange', e => e.preventDefault(), {passive:false});
+document.addEventListener('gestureend', e => e.preventDefault(), {passive:false});
+let lastTouchEnd = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 300) e.preventDefault(); // chặn double-tap
+  lastTouchEnd = now;
+}, {passive:false});
+document.addEventListener('wheel', e => {
+  if (e.ctrlKey) e.preventDefault(); // chặn Ctrl + wheel zoom
+}, {passive:false});
 
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+/* ===== Canvas + DPI scale ===== */
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+
+function setCanvasSize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2); // cap 2 để không quá nặng
+  const w = Math.floor(window.innerWidth);
+  const h = Math.floor(window.innerHeight);
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  canvas.width = Math.floor(w * dpr);
+  canvas.height = Math.floor(h * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // dùng toạ độ CSS pixels
 }
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
+setCanvasSize();
+window.addEventListener('resize', () => {
+  setCanvasSize();
+  resetRain();
+  if (countdownStarted) particles = createParticlesForText(messages[msgIndex]); // re-layout theo size mới
+});
 
-// ===== Mưa chữ HAPPYBIRTHDAY =====
+/* ===== Mưa chữ HAPPYBIRTHDAY (auto scale) ===== */
 const letters = "HAPPYBIRTHDAY".split("");
-let fontSize = 22;
-let columns, drops;
+let rainFontSize = 22, columns = 0, drops = [];
 
 function resetRain() {
-  fontSize = Math.max(18, Math.floor(canvas.width / 30));
-  columns = Math.floor(canvas.width / fontSize);
+  // scale theo chiều nhỏ hơn để ổn định
+  const base = Math.min(window.innerWidth, window.innerHeight);
+  rainFontSize = Math.max(14, Math.round(base / 28));         // auto scale
+  columns = Math.max(10, Math.floor(window.innerWidth / rainFontSize));
   drops = Array(columns).fill(0);
 }
 resetRain();
-window.addEventListener("resize", resetRain);
 
 function drawRain() {
   ctx.fillStyle = "rgba(0,0,0,0.08)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
-  ctx.font = fontSize + "px monospace";
-  for (let i = 0; i < drops.length; i++) {
-    ctx.fillStyle = i % 2 === 0 ? "pink" : "lightpink";
-    const text = letters[Math.floor(Math.random() * letters.length)];
-    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
-      drops[i] = 0;
-    }
+  ctx.font = rainFontSize + "px monospace";
+  for (let i = 0; i < columns; i++) {
+    ctx.fillStyle = (i & 1) === 0 ? "pink" : "lightpink";
+    const text = letters[(Math.random() * letters.length) | 0];
+    ctx.fillText(text, i * rainFontSize, drops[i] * rainFontSize);
+    if (drops[i] * rainFontSize > window.innerHeight && Math.random() > 0.975) drops[i] = 0;
     drops[i]++;
   }
 }
 
-// ===== Particle Countdown =====
+/* ===== Particles + Countdown (auto scale) ===== */
 class Particle {
-  constructor(x, y, tx, ty) {
-    this.x = x;
-    this.y = y;
-    this.tx = tx;
-    this.ty = ty;
-    this.size = 2;
+  constructor(x, y, tx, ty, size) {
+    this.x = x; this.y = y;
+    this.tx = tx; this.ty = ty;
+    this.size = size;
     this.color = "hotpink";
-    this.vx = (Math.random() - 0.5) * 4;
-    this.vy = (Math.random() - 0.5) * 4;
+    this.vx = (Math.random() - 0.5) * 3.5;
+    this.vy = (Math.random() - 0.5) * 3.5;
     this.alpha = Math.random();
     this.scale = 0;
-    this.twinkleSpeed = 0.04 + Math.random() * 0.04;
+    this.twinkleSpeed = 0.035 + Math.random() * 0.04;
   }
-  update(forming) {
+  update(forming, t) {
     if (forming) {
-      this.x += (this.tx - this.x) * 0.1;
-      this.y += (this.ty - this.y) * 0.1;
-      this.scale += (1 - this.scale) * 0.05;
+      this.x += (this.tx - this.x) * 0.12;
+      this.y += (this.ty - this.y) * 0.12;
+      this.scale += (1 - this.scale) * 0.06;
     } else {
       this.x += this.vx;
       this.y += this.vy;
-      this.scale *= 0.96;
+      this.scale *= 0.97;
     }
-    this.alpha = 0.5 + 0.5 * Math.sin(Date.now() * this.twinkleSpeed);
+    // dùng chung timestamp t để giảm tính toán
+    this.alpha = 0.5 + 0.5 * Math.sin(t * this.twinkleSpeed);
   }
   draw() {
     ctx.globalAlpha = this.alpha;
@@ -158,35 +217,52 @@ class Particle {
   }
 }
 
+function getFontSizeForText(text) {
+  const minSide = Math.min(window.innerWidth, window.innerHeight);
+  // scale theo độ dài chuỗi
+  if (text.length <= 2) return Math.floor(minSide * 0.50);
+  if (text.length <= 4) return Math.floor(minSide * 0.30);
+  if (text.length <= 8) return Math.floor(minSide * 0.22);
+  return Math.floor(minSide * 0.18);
+}
+
 function createParticlesForText(text) {
-  let tempCanvas = document.createElement("canvas");
-  let tempCtx = tempCanvas.getContext("2d");
-  tempCanvas.width = canvas.width;
-  tempCanvas.height = canvas.height;
-  tempCtx.fillStyle = "white";
+  const temp = document.createElement('canvas');
+  const tctx = temp.getContext('2d');
+  temp.width = window.innerWidth;
+  temp.height = window.innerHeight;
 
-  let dynamicFontSize = Math.min(canvas.width, canvas.height) / 5;
-  tempCtx.font = "bold " + dynamicFontSize + "px Arial";
-  tempCtx.textAlign = "center";
-  tempCtx.textBaseline = "middle";
-  tempCtx.fillText(text, canvas.width / 2, canvas.height / 2);
+  const f = getFontSizeForText(text);
+  tctx.fillStyle = "#fff";
+  tctx.textAlign = "center";
+  tctx.textBaseline = "middle";
+  tctx.font = "bold " + f + "px Arial";
+  tctx.fillText(text, temp.width / 2, temp.height / 2);
 
-  let imageData = tempCtx.getImageData(0, 0, canvas.width, canvas.height);
-  let particles = [];
-  let gap = Math.max(4, Math.floor(dynamicFontSize / 30));
-  for (let y = 0; y < canvas.height; y += gap) {
-    for (let x = 0; x < canvas.width; x += gap) {
-      let index = (y * canvas.width + x) * 4;
-      if (imageData.data[index + 3] > 128) {
-        let p = new Particle(Math.random() * canvas.width, Math.random() * canvas.height, x, y);
-        particles.push(p);
+  const img = tctx.getImageData(0, 0, temp.width, temp.height).data;
+
+  // khoảng cách mẫu theo font size để giữ mật độ ổn định trên màn nhỏ
+  const gap = Math.max(3, Math.min(8, Math.floor(f / 28)));
+  const dotSize = Math.max(1.3, Math.min(2.6, f / 120));
+
+  const arr = [];
+  for (let y = 0; y < temp.height; y += gap) {
+    for (let x = 0; x < temp.width; x += gap) {
+      const a = img[(y * temp.width + x) * 4 + 3];
+      if (a > 128) {
+        arr.push(new Particle(
+          Math.random() * temp.width,
+          Math.random() * temp.height,
+          x, y,
+          dotSize
+        ));
       }
     }
   }
-  return particles;
+  return arr;
 }
 
-let messages = ["3", "2", "1", "HAPPY", "BIRTHDAY", "TO", "YOU"];
+const messages = ["3", "2", "1", "HAPPY", "BIRTHDAY", "TO", "YOU"];
 let msgIndex = 0;
 let particles = [];
 let forming = true;
@@ -195,11 +271,14 @@ let countdownStarted = false;
 
 function animate() {
   drawRain();
+
   if (countdownStarted) {
-    particles.forEach(p => {
-      p.update(forming);
-      p.draw();
-    });
+    const t = performance.now() * 0.001; // timestamp dùng chung
+    for (let i = 0; i < particles.length; i++) {
+      particles[i].update(forming, t);
+      particles[i].draw();
+    }
+
     if (Date.now() - switchTime > 2000) {
       if (forming) {
         forming = false;
@@ -217,30 +296,52 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
-// ===== Kiểm tra xoay ngang =====
-function checkOrientation() {
-  if (window.innerWidth > window.innerHeight) {
-    document.getElementById("rotate-screen").style.display = "none";
-    document.getElementById("loading-screen").style.display = "flex";
+/* ===== Hiển thị overlay khi dọc, loading khi ngang ===== */
+const rotateEl = document.getElementById('rotate-screen');
+const loadingEl = document.getElementById('loading-screen');
 
+function isPortrait() {
+  // dùng matchMedia nếu có, fallback theo width/height
+  return (window.matchMedia && window.matchMedia('(orientation: portrait)').matches)
+         || window.innerHeight > window.innerWidth;
+}
+
+function handleOrientationFlow() {
+  if (isPortrait()) {
+    // Đang dọc: chỉ hiện overlay xoay ngang
+    rotateEl.style.display = 'flex';
+    loadingEl.style.display = 'none';
+    countdownStarted = false;
+  } else {
+    // Đang ngang: ẩn overlay, chạy loading -> countdown
+    rotateEl.style.display = 'none';
+    loadingEl.style.display = 'grid';
+
+    // reset state trước khi start
+    msgIndex = 0;
+    forming = true;
+    particles = [];
+
+    // loading 3s, chờ 1.5s rồi bắt đầu
     setTimeout(() => {
-      document.getElementById("loading-screen").style.display = "none";
+      loadingEl.style.display = 'none';
       setTimeout(() => {
         particles = createParticlesForText(messages[msgIndex]);
         countdownStarted = true;
         switchTime = Date.now();
       }, 1500);
     }, 3000);
-  } else {
-    document.getElementById("rotate-screen").style.display = "flex";
-    document.getElementById("loading-screen").style.display = "none";
-    countdownStarted = false;
   }
 }
-window.addEventListener("resize", checkOrientation);
-checkOrientation();
 
-animate();
+window.addEventListener('resize', handleOrientationFlow);
+window.addEventListener('orientationchange', handleOrientationFlow);
+window.addEventListener('load', () => {
+  setCanvasSize();
+  resetRain();
+  handleOrientationFlow();
+  animate();
+});
 </script>
 
 </body>
